@@ -5,15 +5,26 @@ import java.nio.file.InvalidPathException
 import java.security.InvalidParameterException
 
 /**
- * a project on the machine
+ * a project on host machine
  */
 data class Project(val name: String, val path: String) {
     init {
         val projectPath = File(path)
-        if (!projectPath.exists() || !projectPath.isDirectory) {
+        if (!projectPath.isDirectory) {
             throw InvalidPathException(path, "project path should be a valid project directory")
         }
     }
+}
+
+fun isHexString(commitId: String): Boolean {
+    var res = true
+    for (ch in commitId) {
+        if (ch in '0'..'9' || ch in 'a'..'f')
+            continue
+        res = false
+        break
+    }
+    return res
 }
 
 /**
@@ -21,40 +32,20 @@ data class Project(val name: String, val path: String) {
  */
 data class MergeScenario(
     val project: Project?,
-    val our: CharArray,
-    val their: CharArray
+    val our: String,
+    val their: String
 ) {
     init {
-        if (our.size > 40 || their.size > 40) {
-            throw InvalidParameterException("commit id of our and their should be valid")
+        if (our.length > 40 || their.length > 40 || !isHexString(our) || !isHexString(their)) {
+            throw InvalidParameterException("commit id of our and their should be a valid SHA-1 abstraction")
         }
     }
 
-    constructor(project: Project, our: String, their: String) : this(
-        project,
-        our.toCharArray(),
-        their.toCharArray()
+    constructor(our: String, their: String) : this(null, our, their)
+
+    constructor(name: String, path: String, our: String, their: String) : this(
+        Project(name, path), our, their
     )
-
-    constructor(our: String, their: String) : this(null, our.toCharArray(), their.toCharArray())
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as MergeScenario
-
-        if (project != other.project) return false
-        if (!our.contentEquals(other.our)) return false
-        return their.contentEquals(other.their)
-    }
-
-    override fun hashCode(): Int {
-        var result = project?.hashCode() ?: 0
-        result = 31 * result + our.contentHashCode()
-        result = 31 * result + their.contentHashCode()
-        return result
-    }
 }
 
 /**
@@ -62,31 +53,27 @@ data class MergeScenario(
  */
 data class MergeTriple(
     val mergeScenario: MergeScenario,
-  val base: CharArray,
+    val base: String,
 ) {
-    val our: CharArray
+    init {
+        if (base.length > 40 || !isHexString(base)) {
+            throw InvalidParameterException("commit id of base should be a valid SHA-1 abstraction")
+        }
+    }
+
+    constructor(our: String, base: String, their: String) : this(MergeScenario(our, their), base)
+
+    constructor(name: String, path: String, our: String, base: String, their: String) : this(
+        MergeScenario(name, path, our, their),
+        base
+    )
+
+    val our: String
         get() = mergeScenario.our
-    val their: CharArray
+    val their: String
         get() = mergeScenario.their
     val project: Project?
         get() = mergeScenario.project
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as MergeTriple
-
-        if (mergeScenario != other.mergeScenario) return false
-        return base.contentEquals(other.base)
-    }
-
-    override fun hashCode(): Int {
-        var result = mergeScenario.hashCode()
-        result = 31 * result + base.contentHashCode()
-        return result
-    }
-
 }
 
 /**
@@ -94,30 +81,31 @@ data class MergeTriple(
  */
 data class MergeQuadruple(
     val mergeTriple: MergeTriple,
-    val merged: CharArray
+    val merged: String
 ) {
-    val our: CharArray
+    init {
+        if (merged.length > 40 || !isHexString(merged)) {
+            throw InvalidParameterException("commit id of merged should be a valid SHA-1 abstraction")
+        }
+    }
+
+    constructor(merged: String, our: String, base: String, their: String) : this(
+        MergeTriple(
+            MergeScenario(our, their), base
+        ), merged
+    )
+
+    constructor(
+        name: String, path: String, merged: String, our: String, base: String, their:
+        String
+    ) : this(MergeTriple(name, path, our, base, their), merged)
+
+    val our: String
         get() = mergeTriple.our
-    val their: CharArray
+    val their: String
         get() = mergeTriple.their
-    val base: CharArray
+    val base: String
         get() = mergeTriple.base
     val project: Project?
         get() = mergeTriple.project
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as MergeQuadruple
-
-        if (mergeTriple != other.mergeTriple) return false
-        return merged.contentEquals(other.merged)
-    }
-
-    override fun hashCode(): Int {
-        var result = mergeTriple.hashCode()
-        result = 31 * result + merged.contentHashCode()
-        return result
-    }
 }
