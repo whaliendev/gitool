@@ -6,3 +6,6 @@ build
 
 # IDE specific
 .idea
+
+# ignore logs
+logs

@@ -28,6 +28,11 @@ repositories {
 dependencies {
     // https://mvnrepository.com/artifact/com.beust/jcommander
     implementation("com.beust:jcommander:1.82")
+
+    // https://mvnrepository.com/artifact/org.eclipse.jgit/org.eclipse.jgit
+    implementation("org.eclipse.jgit:org.eclipse.jgit:6.5.0.202303070854-r")
+
+
     // https://mvnrepository.com/artifact/com.google.code.gson/gson
     implementation("com.google.code.gson:gson:2.8.9")
 
@@ -37,7 +42,6 @@ dependencies {
 
     // Use the Kotlin JUnit 5 integration.
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-
     // Use the JUnit 5 integration.
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.9.1")
 }
@@ -45,7 +49,7 @@ dependencies {
 // Apply a specific Java toolchain to ease working on different environments.
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(11))
     }
 }
 

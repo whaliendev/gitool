@@ -1,5 +1,7 @@
 package edu.whu.gitool.model
 
+import edu.whu.gitool.utility.GitService.Companion.SHA1_ID_LENGTH
+import edu.whu.gitool.utility.GitService.Companion.isHexString
 import java.io.File
 import java.nio.file.InvalidPathException
 import java.security.InvalidParameterException
@@ -16,17 +18,6 @@ data class Project(val name: String, val path: String) {
     }
 }
 
-fun isHexString(commitId: String): Boolean {
-    var res = true
-    for (ch in commitId) {
-        if (ch in '0'..'9' || ch in 'a'..'f')
-            continue
-        res = false
-        break
-    }
-    return res
-}
-
 /**
  * Represent a [MergeScenario] with our and their pair
  */
@@ -36,7 +27,9 @@ data class MergeScenario(
     val their: String
 ) {
     init {
-        if (our.length > 40 || their.length > 40 || !isHexString(our) || !isHexString(their)) {
+        if (our.length > SHA1_ID_LENGTH || their.length > SHA1_ID_LENGTH || !isHexString(our) ||
+            !isHexString(their)
+        ) {
             throw InvalidParameterException("commit id of our and their should be a valid SHA-1 abstraction")
         }
     }
@@ -56,7 +49,7 @@ data class MergeTriple(
     val base: String,
 ) {
     init {
-        if (base.length > 40 || !isHexString(base)) {
+        if (base.length > SHA1_ID_LENGTH || !isHexString(base)) {
             throw InvalidParameterException("commit id of base should be a valid SHA-1 abstraction")
         }
     }
@@ -84,7 +77,7 @@ data class MergeQuadruple(
     val merged: String
 ) {
     init {
-        if (merged.length > 40 || !isHexString(merged)) {
+        if (merged.length > SHA1_ID_LENGTH || !isHexString(merged)) {
             throw InvalidParameterException("commit id of merged should be a valid SHA-1 abstraction")
         }
     }

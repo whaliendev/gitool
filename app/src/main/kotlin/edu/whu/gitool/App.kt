@@ -3,6 +3,9 @@
  */
 package edu.whu.gitool
 
+import org.slf4j.LoggerFactory
+
+
 class App {
     val greeting: String
         get() {
@@ -10,6 +13,9 @@ class App {
         }
 }
 
+private val logger = LoggerFactory.getLogger("app")
+
 fun main() {
-    println(App().greeting)
+    logger.info("hello from logger")
+    println("Hello world!")
 }
