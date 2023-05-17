@@ -73,8 +73,12 @@ class GitService {
         }
 
         /**
-         * get complete object id in a git repo, return Optional.empty() if either [objectId] or [path]
-         * is invalid, else Optional of complete object id
+         * get complete object id in a git repo, return Optional.empty() if either [objectIdStr] or [path]
+         * is invalid, else Optional of list of complete object id
+         * you can judge concrete scenario based on the size of List<String>. if the size is 0, the
+         * short commit id doesn't exist in this repo; if the size is 1, the short commit id is unique
+         * in this repo; otherwise, the short commit id is not unique
+         *
          */
         fun getCompleteObjectId(objectIdStr: String, path: String): Optional<List<String>> {
             if (!checkObjectId(objectIdStr)) return Optional.empty()

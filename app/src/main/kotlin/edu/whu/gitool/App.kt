@@ -13,7 +13,7 @@ class App {
         }
 }
 
-private val logger = LoggerFactory.getLogger("app")
+private val logger = LoggerFactory.getLogger("gitool")
 
 fun main() {
     logger.info("hello from logger")

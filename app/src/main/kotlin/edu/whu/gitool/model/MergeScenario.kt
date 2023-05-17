@@ -4,7 +4,6 @@ import edu.whu.gitool.utility.GitService.Companion.SHA1_ID_LENGTH
 import edu.whu.gitool.utility.GitService.Companion.isHexString
 import java.io.File
 import java.nio.file.InvalidPathException
-import java.security.InvalidParameterException
 
 /**
  * a project on host machine
@@ -30,7 +29,7 @@ data class MergeScenario(
         if (our.length > SHA1_ID_LENGTH || their.length > SHA1_ID_LENGTH || !isHexString(our) ||
             !isHexString(their)
         ) {
-            throw InvalidParameterException("commit id of our and their should be a valid SHA-1 abstraction")
+            throw IllegalArgumentException("commit id of our and their should be a valid SHA-1 abstraction")
         }
     }
 
@@ -50,7 +49,7 @@ data class MergeTriple(
 ) {
     init {
         if (base.length > SHA1_ID_LENGTH || !isHexString(base)) {
-            throw InvalidParameterException("commit id of base should be a valid SHA-1 abstraction")
+            throw IllegalArgumentException("commit id of base should be a valid SHA-1 abstraction")
         }
     }
 
@@ -78,7 +77,7 @@ data class MergeQuadruple(
 ) {
     init {
         if (merged.length > SHA1_ID_LENGTH || !isHexString(merged)) {
-            throw InvalidParameterException("commit id of merged should be a valid SHA-1 abstraction")
+            throw IllegalArgumentException("commit id of merged should be a valid SHA-1 abstraction")
         }
     }
 
