@@ -1,5 +1,8 @@
 package edu.whu.gitool.subcommand
 
-fun interface Task<out T> {
-    fun run(): Result<T>
+import java.util.*
+
+interface Task<T : Any> {
+    var result: Optional<T>
+    fun run(): Result<Boolean>
 }

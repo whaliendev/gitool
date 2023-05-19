@@ -1,6 +1,8 @@
 package edu.whu.gitool.subcommand
 
-class RepoCloner: Task<Boolean> {
+import java.util.*
+
+class RepoCloner(override var result: Optional<Boolean>) : Task<Boolean> {
     override fun run(): Result<Boolean> {
         TODO("Not yet implemented")
     }

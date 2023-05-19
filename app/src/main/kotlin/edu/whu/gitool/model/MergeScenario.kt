@@ -1,7 +1,5 @@
 package edu.whu.gitool.model
 
-import edu.whu.gitool.utility.GitService.Companion.SHA1_ID_LENGTH
-import edu.whu.gitool.utility.GitService.Companion.isHexString
 import java.io.File
 import java.nio.file.InvalidPathException
 
@@ -21,16 +19,16 @@ data class Project(val name: String, val path: String) {
  * Represent a [MergeScenario] with our and their pair
  */
 data class MergeScenario(
-    val project: Project?,
-    val our: String,
-    val their: String
+    var project: Project?,
+    var our: String,
+    var their: String
 ) {
     init {
-        if (our.length > SHA1_ID_LENGTH || their.length > SHA1_ID_LENGTH || !isHexString(our) ||
-            !isHexString(their)
-        ) {
-            throw IllegalArgumentException("commit id of our and their should be a valid SHA-1 abstraction")
-        }
+//        if (our.length > SHA1_ID_LENGTH || their.length > SHA1_ID_LENGTH || !isHexString(our) ||
+//            !isHexString(their)
+//        ) {
+//            throw IllegalArgumentException("commit id of our and their should be a valid SHA-1 abstraction")
+//        }
     }
 
     constructor(our: String, their: String) : this(null, our, their)
@@ -45,12 +43,12 @@ data class MergeScenario(
  */
 data class MergeTriple(
     val mergeScenario: MergeScenario,
-    val base: String,
+    var base: String,
 ) {
     init {
-        if (base.length > SHA1_ID_LENGTH || !isHexString(base)) {
-            throw IllegalArgumentException("commit id of base should be a valid SHA-1 abstraction")
-        }
+//        if (base.length > SHA1_ID_LENGTH || !isHexString(base)) {
+//            throw IllegalArgumentException("commit id of base should be a valid SHA-1 abstraction")
+//        }
     }
 
     constructor(our: String, base: String, their: String) : this(MergeScenario(our, their), base)
@@ -60,25 +58,34 @@ data class MergeTriple(
         base
     )
 
-    val our: String
+    var our: String?
         get() = mergeScenario.our
-    val their: String
+        set(value) {
+            mergeScenario.our = value!!
+        }
+    var their: String?
         get() = mergeScenario.their
-    val project: Project?
+        set(value) {
+            mergeScenario.their = value!!
+        }
+    var project: Project?
         get() = mergeScenario.project
+        set(value) {
+            mergeScenario.project = value!!
+        }
 }
 
 /**
  * Represent a [MergeScenario] with our, base, their, merged quadruple
  */
 data class MergeQuadruple(
-    val mergeTriple: MergeTriple,
-    val merged: String
+    val mergeTriple: MergeTriple?,
+    var merged: String
 ) {
     init {
-        if (merged.length > SHA1_ID_LENGTH || !isHexString(merged)) {
-            throw IllegalArgumentException("commit id of merged should be a valid SHA-1 abstraction")
-        }
+//        if (merged.length > SHA1_ID_LENGTH || !isHexString(merged)) {
+//            throw IllegalArgumentException("commit id of merged should be a valid SHA-1 abstraction")
+//        }
     }
 
     constructor(merged: String, our: String, base: String, their: String) : this(
@@ -92,12 +99,24 @@ data class MergeQuadruple(
         String
     ) : this(MergeTriple(name, path, our, base, their), merged)
 
-    val our: String
-        get() = mergeTriple.our
-    val their: String
-        get() = mergeTriple.their
-    val base: String
-        get() = mergeTriple.base
-    val project: Project?
-        get() = mergeTriple.project
+    var our: String?
+        get() = mergeTriple?.our
+        set(value) {
+            mergeTriple?.our = value!!
+        }
+    var their: String?
+        get() = mergeTriple?.their
+        set(value) {
+            mergeTriple?.their = value!!
+        }
+    var base: String?
+        get() = mergeTriple?.base
+        set(value) {
+            mergeTriple?.base = value!!
+        }
+    var project: Project?
+        get() = mergeTriple?.project
+        set(value) {
+            mergeTriple?.project = value!!
+        }
 }
