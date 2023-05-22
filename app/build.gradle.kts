@@ -32,7 +32,6 @@ dependencies {
     // https://mvnrepository.com/artifact/org.eclipse.jgit/org.eclipse.jgit
     implementation("org.eclipse.jgit:org.eclipse.jgit:6.5.0.202303070854-r")
 
-
     // https://mvnrepository.com/artifact/com.google.code.gson/gson
     implementation("com.google.code.gson:gson:2.8.9")
 
@@ -56,6 +55,16 @@ java {
 application {
     // Define the main class for the application.
     mainClass.set("edu.whu.gitool.AppKt")
+}
+
+tasks.jar {
+    manifest {
+        attributes["Main-Class"] = "edu.whu.gitool.AppKt"
+    }
+
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    from(configurations.runtimeClasspath.get().map { zipTree(it) }.also { from(it) })
 }
 
 tasks.named<Test>("test") {

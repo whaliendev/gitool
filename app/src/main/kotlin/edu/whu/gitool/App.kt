@@ -9,6 +9,7 @@ import java.util.*
 
 private val logger = LoggerFactory.getLogger("gitool")
 
+
 fun main(args: Array<String>) {
     val finder = CommandFind()
     val jc = JCommander.newBuilder()
@@ -37,3 +38,4 @@ fun main(args: Array<String>) {
         SubCommandEnum.VALIDATE -> TODO()
     }
 }
+

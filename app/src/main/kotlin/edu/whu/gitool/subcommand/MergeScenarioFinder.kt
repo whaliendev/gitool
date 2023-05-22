@@ -35,13 +35,17 @@ class MergeScenarioFinder(
     private var headerEnum = OnlyMerged
 
     init {
+        // onlyMerged and queryBase is incompatible
         if (onlyMerged && queryBase) {
             throw ParameterException(
                 "only merged only store merged commit node, while query base " +
                     "will store all our, their, base, merged commit nodes"
             )
         }
+
         ArgValidator.checkGitRepo(projectPath)
+
+        // complete sinceHash and beforeHash if nonnull
         if (sinceHash != null) {
             sinceHash = ArgValidator.checkObjectId(sinceHash!!, projectPath)
         }
@@ -50,24 +54,30 @@ class MergeScenarioFinder(
         }
         if (sinceHash != null && beforeHash == null) {
             throw ParameterException(
-                "Due to git's internal storage mechanism, " +
-                    "gitool don't support walk from since node"
+                "Due to the way Git stores commit nodes internally, we do not support traversing " +
+                    "from the sinceHash."
             )
         }
 
+        // if outputFile is a directory, append filename to it
         if (outputFile != null && outputFile!!.isDirectory) {
             outputFile = File(outputFile, CommandFind.MERGE_SCENARIO_DEST)
         }
+        // if outputToTmp specified, output to tmp file instead of outputFile
         if (outputToTmp) {
             outputFile = File(System.getProperty("java.io.tmpdir"), CommandFind.MERGE_SCENARIO_DEST)
             logger.info("merge scenario found will be written to $outputFile")
         }
+
+        // outputFile must be set if writing header is needed
         if (outputFile == null && writeHeader) {
             throw ParameterException("-d or --output-file must be specified if you want to output results")
         }
 
+        // if both sinceHash and beforeHash is set, we don't use threshold
         if (sinceHash != null && beforeHash != null) useThreshold = false
 
+        // the format we write header
         headerEnum = if (onlyMerged) {
             OnlyMerged
         } else if (queryBase) {
@@ -82,12 +92,16 @@ class MergeScenarioFinder(
     override fun run(): Result<Boolean> {
         val mergeQuadruples = mutableListOf<MergeQuadruple>()
         if (!useThreshold) {
+            logger.info("begin walking from $beforeHash to $sinceHash")
             walkFromBeforeToSince(mergeQuadruples)
         } else if (sinceHash == null && beforeHash != null) {
+            logger.info("begin walking up to $threshold merge scenarios from $beforeHash")
             walkFromBefore(mergeQuadruples)
         } else {
+            logger.info("begin walking up to $threshold merge scenarios from HEAD")
             walk(mergeQuadruples)
         }
+        logger.info("${mergeQuadruples.size} merge scenarios found at this setting")
 
         var data: List<List<String>> = listOf()
         if (outputFile != null) {   // write results to external file
@@ -133,7 +147,6 @@ class MergeScenarioFinder(
                 val commit = walk.parseCommit(repo.resolve(beforeHash))
                 logger.info("start commit: $commit")
 
-                logger.info("walking all commits starting at $beforeHash until we find $sinceHash")
                 walk.markStart(commit)
                 run breaking@{
                     walk.forEach { rev ->
@@ -146,7 +159,6 @@ class MergeScenarioFinder(
                 }
             }
         }
-        logger.info("we found ${mergeQuadruples.size} merge scenarios satisfying conditions")
     }
 
     private fun walkFromBefore(mergeQuadruples: MutableList<MergeQuadruple>) {
@@ -162,7 +174,6 @@ class MergeScenarioFinder(
                 val commit = walk.parseCommit(repo.resolve(beforeHash))
                 logger.info("start commit: $commit")
 
-                logger.info("walking all commits starting at HEAD until we find $threshold merge scenarios")
                 walk.markStart(commit)
                 var count = 0
                 run breaking@{
@@ -176,7 +187,6 @@ class MergeScenarioFinder(
                 }
             }
         }
-        logger.info("we found ${mergeQuadruples.size} merge scenarios satisfying conditions")
     }
 
     private fun walk(mergeQuadruples: MutableList<MergeQuadruple>) {
@@ -192,7 +202,6 @@ class MergeScenarioFinder(
                 val commit = walk.parseCommit(repo.resolve("HEAD"))
                 logger.info("start commit: $commit")
 
-                logger.info("walking all commits starting at HEAD until we find $threshold merge scenarios")
                 walk.markStart(commit)
                 var count = 0
                 run breaking@{
@@ -206,11 +215,10 @@ class MergeScenarioFinder(
                 }
             }
         }
-        logger.info("we found ${mergeQuadruples.size} merge scenarios satisfying conditions")
     }
 
     private fun addToMergeQuadruples(rev: RevCommit, mergeQuadruples: MutableList<MergeQuadruple>) {
-        logger.info("we found a merge scenario with merged id = [${rev.id.name}]")
+        logger.info("we found a merge scenario with merged id [${rev.id.name}]")
         val mergeTriple = MergeTriple("", "", "")
         val mergeQuadruple = MergeQuadruple(mergeTriple, rev.id.name)
         when (headerEnum) {
