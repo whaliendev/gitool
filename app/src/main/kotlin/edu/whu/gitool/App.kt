@@ -2,6 +2,8 @@ package edu.whu.gitool
 
 import com.beust.jcommander.JCommander
 import edu.whu.gitool.subcommand.MergeScenarioFinder
+import edu.whu.gitool.subcommand.ResolutionExtractor
+import edu.whu.gitool.subcommand.command.CommandExtract
 import edu.whu.gitool.subcommand.command.CommandFind
 import edu.whu.gitool.subcommand.command.SubCommandEnum
 import org.slf4j.LoggerFactory
@@ -12,8 +14,10 @@ private val logger = LoggerFactory.getLogger("gitool")
 
 fun main(args: Array<String>) {
     val finder = CommandFind()
+    val extractor = CommandExtract()
     val jc = JCommander.newBuilder()
         .addCommand(SubCommandEnum.FIND.commandName, finder)
+        .addCommand(SubCommandEnum.EXTRACT.commandName, extractor)
         .build()
 
     jc.parse(*args)
@@ -34,7 +38,16 @@ fun main(args: Array<String>) {
         }
 
         SubCommandEnum.CLONE -> TODO()
-        SubCommandEnum.EXTRACT -> TODO()
+        SubCommandEnum.EXTRACT -> {
+            ResolutionExtractor(
+                extractor.projectPath,
+                extractor.dumpPath,
+                extractor.statFile,
+                extractor.mss,
+                extractor.mssFile
+            ).run()
+        }
+
         SubCommandEnum.VALIDATE -> TODO()
     }
 }

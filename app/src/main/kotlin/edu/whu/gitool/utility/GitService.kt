@@ -14,6 +14,9 @@ import org.eclipse.jgit.revwalk.RevCommit
 import org.eclipse.jgit.revwalk.RevWalk
 import org.eclipse.jgit.revwalk.filter.RevFilter
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
+import org.eclipse.jgit.treewalk.TreeWalk
+import org.eclipse.jgit.treewalk.filter.PathFilter
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.*
 
@@ -104,6 +107,10 @@ class GitService {
         /**
          * ensure [projectPath] is a valid git repo and [ourCommit] and [theirCommit] is valid git commit id
          */
+        @Deprecated(
+            message = "return value of this function doesn't include merge base is nullable",
+            replaceWith = ReplaceWith("GitService.getMergeBaseCommit")
+        )
         fun getMergeBase(
             projectPath: String,
             ourCommit: RevCommit,
@@ -125,7 +132,61 @@ class GitService {
                     }
                 }
             }
+        }
 
+        /**
+         * ensure [projectPath] is a valid git repo and [ourCommit] and [theirCommit] is valid git commit id
+         */
+        fun getMergeBaseCommit(
+            projectPath: String,
+            ourCommit: RevCommit,
+            theirCommit: RevCommit
+        ): RevCommit? {
+            openGitRepo(projectPath).get().use { repo ->
+                RevWalk(repo).apply {
+                    revFilter = RevFilter.MERGE_BASE
+                }.use { walk ->
+                    // backup before use for a thread-safe RevCommit
+                    walk.markStart(walk.parseCommit(ourCommit))
+                    walk.markStart(walk.parseCommit(theirCommit))
+
+                    return walk.next()
+                }
+            }
+        }
+
+        /**
+         * read a [file]'s content at [revCommit] of project [projectPath]
+         *
+         * Note that we assume the file content is u8 encoding
+         */
+        fun readFileContent(
+            projectPath: String,
+            file: String,
+            revCommit: RevCommit
+        ): Optional<String> {
+            val objectId = revCommit.toObjectId()
+            openGitRepo(projectPath).get().use { repo ->
+                RevWalk(repo).use { walk ->
+                    val commit = walk.parseCommit(objectId)
+                    val tree = commit.tree
+
+                    TreeWalk(repo).use { treeWalk ->
+                        treeWalk.addTree(tree)
+                        treeWalk.isRecursive = true
+                        treeWalk.filter = PathFilter.create(file)
+                        if (!treeWalk.next()) {
+                            return Optional.empty()
+                        }
+
+                        val fileObjectId = treeWalk.getObjectId(0)
+                        val loader = repo.open(fileObjectId)
+                        val stream = ByteArrayOutputStream(8 * 1024)
+                        loader.copyTo(stream)
+                        return Optional.of(stream.toString(Charsets.UTF_8))
+                    }
+                }
+            }
         }
 
         class MergeConflictsFilter(
