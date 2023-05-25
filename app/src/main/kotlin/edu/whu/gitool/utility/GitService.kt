@@ -108,7 +108,7 @@ class GitService {
          * ensure [projectPath] is a valid git repo and [ourCommit] and [theirCommit] is valid git commit id
          */
         @Deprecated(
-            message = "return value of this function doesn't include merge base is nullable",
+            message = "return value of this function doesn't reflect merge base is nullable",
             replaceWith = ReplaceWith("GitService.getMergeBaseCommit")
         )
         fun getMergeBase(

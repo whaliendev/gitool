@@ -31,7 +31,7 @@ class CommandFind {
         names = ["--query-base"],
         description = "return merge scenario with base field set"
     )
-    var queryBase: Boolean = true
+    var queryBase: Boolean = false
 
     @Parameter(
         names = ["--since", "-s"],
@@ -78,6 +78,6 @@ class CommandFind {
 
     internal companion object {
         const val MERGE_SCENARIO_DEST = "merge-scenarios.csv"
-        const val LOOKUP_THRESHOLD = 1000
+        const val LOOKUP_THRESHOLD = 3000
     }
 }

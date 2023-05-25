@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder
 import edu.whu.gitool.model.*
 import edu.whu.gitool.utility.FileUtils
 import edu.whu.gitool.utility.GitService
+import edu.whu.gitool.utility.Utils
 import org.eclipse.jgit.diff.Sequence
 import org.eclipse.jgit.lib.ObjectId
 import org.eclipse.jgit.lib.Repository
@@ -69,18 +70,19 @@ class ResolutionExtractor(
 
         if (mssFile != null && mssFile.exists() && mssFile.isFile) {
             mssFile.bufferedReader().use { reader ->
-                val line = reader.readLine()
-                val commitIdList =
-                    GitService.getCompleteObjectId(line, projectPath.absolutePath).orElseThrow {
-                        ParameterException("$line in $mssFile is not valid commit id in project $projectPath")
+                reader.lines().forEach { line ->
+                    val commitIdList =
+                        GitService.getCompleteObjectId(line, projectPath.absolutePath).orElseThrow {
+                            ParameterException("$line in $mssFile is not valid commit id in project $projectPath")
+                        }
+                    if (commitIdList.isEmpty()) {
+                        throw ParameterException("$line doesn't exist in project $projectPath")
                     }
-                if (commitIdList.isEmpty()) {
-                    throw ParameterException("$line doesn't exist in project $projectPath")
+                    if (commitIdList.size != 1) {
+                        throw ParameterException("$line is not unique in project $projectPath")
+                    }
+                    mss.add(commitIdList.first())
                 }
-                if (commitIdList.size != 1) {
-                    throw ParameterException("$line is not unique in project $projectPath")
-                }
-                mss.add(commitIdList.first())
             }
             logger.info("we'll use merge scenarios collected from $mssFile")
         } else {
@@ -106,36 +108,95 @@ class ResolutionExtractor(
     override fun run(): Result<Boolean> {
         mss.forEach { handleMergeScenario(it) }
         dumpResolutionStats()
+        printResolutionStats()
         return Result.success(true)
+    }
+
+    private fun printResolutionStats() {
+        logger.info("there are $conflictBlockCnt conflict blocks in this extraction, the statistics are as follows:")
+
+        val ourCnt = statMap[ResolutionStrategy.OUR.literal]!!
+        val theirCnt = statMap[ResolutionStrategy.THEIR.literal]!!
+        val baseCnt = statMap[ResolutionStrategy.BASE.literal]!!
+        val concatCnt = statMap[ResolutionStrategy.CONCAT.literal]!!
+        val deletionCnt = statMap[ResolutionStrategy.DELETION.literal]!!
+        val interleaveCnt = statMap[ResolutionStrategy.INTERLEAVE.literal]!!
+        val newcodeCnt = statMap[ResolutionStrategy.NEWCODE.literal]!!
+        val unresolvedCnt = statMap[ResolutionStrategy.UNRESOLVED.literal]!!
+        val unknownCnt = statMap[ResolutionStrategy.UNKNOWN.literal]!!
+
+        val col2 = listOf(
+            projectPath.absolutePath,
+            Utils.toPercentage(ourCnt, conflictBlockCnt),
+            Utils.toPercentage(theirCnt, conflictBlockCnt),
+            Utils.toPercentage(baseCnt, conflictBlockCnt),
+            Utils.toPercentage(concatCnt, conflictBlockCnt),
+            Utils.toPercentage(deletionCnt, conflictBlockCnt),
+            Utils.toPercentage(interleaveCnt, conflictBlockCnt),
+            Utils.toPercentage(newcodeCnt, conflictBlockCnt),
+            Utils.toPercentage(unresolvedCnt, conflictBlockCnt),
+            Utils.toPercentage(unknownCnt, conflictBlockCnt),
+            Utils.toPercentage(conflictBlockCnt, conflictBlockCnt)
+        )
+        val col1Width = STAT_HEADER.maxOfOrNull { it.length } ?: 0
+        val col2Width = col2.maxOfOrNull { it.length } ?: 0
+        val header = STAT_HEADER.map { it.padEnd(col1Width) }
+        val data = header.zip(col2).map { it ->
+            listOf(it.first.padEnd(col1Width), it.second.padStart(col2Width))
+        }
+
+        BufferedWriter(OutputStreamWriter(System.out)).use { bw ->
+            writeProjStat(bw, data, "\t")
+        }
     }
 
     private fun dumpResolutionStats() {
         if (statFile == null) return
+        val ourCnt = statMap[ResolutionStrategy.OUR.literal]!!
+        val theirCnt = statMap[ResolutionStrategy.THEIR.literal]!!
+        val baseCnt = statMap[ResolutionStrategy.BASE.literal]!!
+        val concatCnt = statMap[ResolutionStrategy.CONCAT.literal]!!
+        val deletionCnt = statMap[ResolutionStrategy.DELETION.literal]!!
+        val interleaveCnt = statMap[ResolutionStrategy.INTERLEAVE.literal]!!
+        val newcodeCnt = statMap[ResolutionStrategy.NEWCODE.literal]!!
+        val unresolvedCnt = statMap[ResolutionStrategy.UNRESOLVED.literal]!!
+        val unknownCnt = statMap[ResolutionStrategy.UNKNOWN.literal]!!
+
+        val data = listOf(
+            projectPath.absolutePath,
+            ourCnt.toString(),
+            theirCnt.toString(),
+            baseCnt.toString(),
+            concatCnt.toString(),
+            deletionCnt.toString(),
+            interleaveCnt.toString(),
+            newcodeCnt.toString(),
+            unresolvedCnt.toString(),
+            unknownCnt.toString(),
+            conflictBlockCnt.toString()
+        )
         if (statFile.exists()) { // append data
             BufferedWriter(FileWriter(statFile.name, true)).use { bw ->
-                dumpProjStat(bw)
+                writeProjStat(bw, listOf(data))
             }
         } else {
             BufferedWriter(FileWriter(statFile.absolutePath)).use { bw ->
-                bw.write(STAT_HEADER)
+                bw.write(STAT_HEADER.joinToString(","))
                 bw.newLine()
-                dumpProjStat(bw)
+                writeProjStat(bw, listOf(data))
             }
         }
     }
 
-    private fun dumpProjStat(bw: BufferedWriter) {
-        bw.write(projectPath.absolutePath + ", ")
-        bw.write(statMap[ResolutionStrategy.OUR.literal].toString() + ", ")
-        bw.write(statMap[ResolutionStrategy.THEIR.literal].toString() + ", ")
-        bw.write(statMap[ResolutionStrategy.BASE.literal].toString() + ", ")
-        bw.write(statMap[ResolutionStrategy.CONCAT.literal].toString() + ", ")
-        bw.write(statMap[ResolutionStrategy.DELETION.literal].toString() + ", ")
-        bw.write(statMap[ResolutionStrategy.INTERLEAVE.literal].toString() + ", ")
-        bw.write(statMap[ResolutionStrategy.NEWCODE.literal].toString() + ", ")
-        bw.write(statMap[ResolutionStrategy.UNRESOLVED.literal].toString() + ", ")
-        bw.write(statMap[ResolutionStrategy.UNKNOWN.literal].toString() + ", ")
-        bw.write("$conflictBlockCnt\n")
+    private fun writeProjStat(
+        bw: BufferedWriter,
+        data: List<List<String>>,
+        separator: String = ",",
+    ) {
+        data.forEach { row ->
+            bw.write(row.joinToString(separator))
+            bw.newLine()
+        }
     }
 
     private fun handleMergeScenario(ms: String) {
@@ -169,12 +230,16 @@ class ResolutionExtractor(
                         val fileF = File(file)
                         val filename = fileF.name
                         // dir name in following format: '[db-]db_impl.cc'
-                        val dirName = "[${
-                            (fileF.parent + File.separator).replace(
-                                File.separator,
-                                "-"
-                            )
-                        }]${filename}"
+                        val dirName = if (fileF.parent == null) {
+                            filename
+                        } else {
+                            "[${
+                                (fileF.parent + File.separator).replace(
+                                    File.separator,
+                                    "-"
+                                )
+                            }]${filename}"
+                        }
                         val fileDir = File(msDumpPath).resolve(dirName)
                         FileUtils.prepareDirectories(fileDir.absolutePath)
 
@@ -261,6 +326,7 @@ class ResolutionExtractor(
             return
         }
 
+        logger.info("${ourFile.absolutePath} and ${theirFile.absolutePath} merged, output is ${conflictFile.absolutePath}")
         BufferedReader(InputStreamReader(process!!.inputStream)).use { br ->
             BufferedWriter(FileWriter(conflictFile)).use { writer ->
                 br.forEachLine { line ->
@@ -290,8 +356,9 @@ class ResolutionExtractor(
             val craftedFile = path.toFile().name  // [db-]db_impl.cc
             val filename = path.toFile().name.substringAfterLast("]")  // db_impl.cc
             val fileExt = filename.substringAfterLast(".")
-            logger.info("extracting for $craftedFile")
+            if (craftedFile.length == 26 && craftedFile.count { it == '-' } == 2) return@forEach
 
+            logger.info("extracting for $craftedFile")
             val mergedFile = path.toFile().resolve("${Side.MERGED.literal}.$fileExt")
             val confFile = path.toFile().resolve("${Side.CONFLICT.literal}.$fileExt")
             if (!mergedFile.exists() || !confFile.exists()) return@forEach
@@ -321,6 +388,7 @@ class ResolutionExtractor(
                     conflictBlocks.add(cb)
                 }
 
+            logger.info("judging resolution strategy of conflict blocks in file $craftedFile")
             val judge = ResolutionStrategyJudge()
             conflictBlocks.forEach { cb ->
                 val prefix = getCodeSnippets(confLines, -1, cb.startLine)
@@ -334,6 +402,8 @@ class ResolutionExtractor(
                 var cnt = statMap.getOrDefault(key, 0)
                 statMap[key] = ++cnt
             }
+
+            logger.info("dumping resolution stat of file $craftedFile")
             dumpResolutionStrategy(
                 projectPath,
                 path.toString(),
@@ -350,9 +420,9 @@ class ResolutionExtractor(
         conflictBlocks: List<ConflictBlock>
     ) {
         val filename = file.substringAfterLast("]")
-        val parentDir = "\\[(.*?)\\]".toRegex().find(file)!!.groupValues.getOrElse(1) {
+        val parentDir = "\\[(.*?)\\]".toRegex().find(file)?.groupValues?.getOrElse(1) {
             file.replace(filename, "").replace("[", "").replace("]", "")
-        }.replace("-", File.separator)
+        }?.replace("-", File.separator) ?: ""
         val fileF = File(parentDir).resolve(filename)
         val fileResolutions = FileResolution(projectPath, fileF.toString(), conflictBlocks)
         val gson = GsonBuilder().excludeFieldsWithoutExposeAnnotation().setPrettyPrinting()
@@ -413,8 +483,20 @@ class ResolutionExtractor(
     }
 
     companion object {
-        private const val STAT_HEADER =
-            "project_path, our, their, base, concat, deletion, interleave, newcode, unresolved, unknown, total"
+        private val STAT_HEADER =
+            listOf(
+                "project_path",
+                "our",
+                "their",
+                "base",
+                "concat",
+                "deletion",
+                "interleave",
+                "newcode",
+                "unresolved",
+                "unknown",
+                "total"
+            )
     }
 }
 

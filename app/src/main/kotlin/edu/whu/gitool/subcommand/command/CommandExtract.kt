@@ -2,6 +2,7 @@ package edu.whu.gitool.subcommand.command
 
 import com.beust.jcommander.Parameter
 import com.beust.jcommander.Parameters
+import com.beust.jcommander.converters.FileConverter
 import java.io.File
 
 @Parameters(
@@ -9,8 +10,8 @@ import java.io.File
 )
 class CommandExtract {
     @Parameter(
-        names = ["--project", "-p"],
         description = "project path to extract merge scenario resolutions",
+        converter = FileConverter::class,
         required = true
     )
     lateinit var projectPath: File
