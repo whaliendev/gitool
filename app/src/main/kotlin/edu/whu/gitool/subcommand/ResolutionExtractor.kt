@@ -27,7 +27,7 @@ class ResolutionExtractor(
     private val statFile: File?,
     msscli: List<String>,
     private val mssFile: File?,
-) : Task<List<List<String>>> {
+) : Task<List<String>> {
     private val logger = LoggerFactory.getLogger(ResolutionExtractor::class.java)
 
     private var conflictsMSs: Int = 0
@@ -37,9 +37,9 @@ class ResolutionExtractor(
     private var needDumpStat: Boolean = false
     private val mss: MutableList<String> = mutableListOf()
 
-    override var result: Optional<List<List<String>>> = Optional.empty()
+    override var result: Optional<List<String>> = Optional.empty()
 
-    private lateinit var repo: Repository
+    private var repo: Repository
 
     init {
         if (!GitService.isGitRepo(projectPath.absolutePath)) {
@@ -136,12 +136,15 @@ class ResolutionExtractor(
             Utils.toPercentage(newcodeCnt, conflictBlockCnt),
             Utils.toPercentage(unresolvedCnt, conflictBlockCnt),
             Utils.toPercentage(unknownCnt, conflictBlockCnt),
-            Utils.toPercentage(conflictBlockCnt, conflictBlockCnt)
+            Utils.toPercentage(conflictBlockCnt, conflictBlockCnt),
+            conflictBlockCnt.toString()
         )
+        val header = ArrayList(STAT_HEADER)
+        header.add("count")
         val col1Width = STAT_HEADER.maxOfOrNull { it.length } ?: 0
         val col2Width = col2.maxOfOrNull { it.length } ?: 0
-        val header = STAT_HEADER.map { it.padEnd(col1Width) }
-        val data = header.zip(col2).map { it ->
+        val printHeader = header.map { it.padEnd(col1Width) }
+        val data = printHeader.zip(col2).map {
             listOf(it.first.padEnd(col1Width), it.second.padStart(col2Width))
         }
 
@@ -175,8 +178,11 @@ class ResolutionExtractor(
             unknownCnt.toString(),
             conflictBlockCnt.toString()
         )
+
+        result = Optional.of(data)
+
         if (statFile.exists()) { // append data
-            BufferedWriter(FileWriter(statFile.name, true)).use { bw ->
+            BufferedWriter(FileWriter(statFile.absolutePath, true)).use { bw ->
                 writeProjStat(bw, listOf(data))
             }
         } else {
@@ -197,6 +203,7 @@ class ResolutionExtractor(
             bw.write(row.joinToString(separator))
             bw.newLine()
         }
+        bw.flush()
     }
 
     private fun handleMergeScenario(ms: String) {
@@ -318,7 +325,7 @@ class ResolutionExtractor(
 
         val command =
             "git merge-file -p --diff3 ${ourFile.absolutePath} ${baseFile.absolutePath} ${theirFile.absolutePath}"
-        var process: Process? = null
+        var process: Process?
         try {
             process = processBuilder.start()
         } catch (ex: IOException) {
@@ -376,13 +383,13 @@ class ResolutionExtractor(
                     var j = index
                     var k = index
                     cb.startLine = index
-                    while (!confLines[++j].startsWith(ConflictMark.BASES.mark));
+                    while (j + 1 < confLines.size && !confLines[++j].startsWith(ConflictMark.BASES.mark));
                     cb.ours = getCodeSnippets(confLines, k, j)
                     k = j
-                    while (!confLines[++j].startsWith(ConflictMark.THEIRS.mark));
+                    while (j + 1 < confLines.size && !confLines[++j].startsWith(ConflictMark.THEIRS.mark));
                     cb.bases = getCodeSnippets(confLines, k, j)
                     k = j
-                    while (!confLines[++j].startsWith(ConflictMark.END.mark));
+                    while (j + 1 < confLines.size && !confLines[++j].startsWith(ConflictMark.END.mark));
                     cb.theirs = getCodeSnippets(confLines, k, j)
                     cb.endLine = j
                     conflictBlocks.add(cb)
@@ -504,8 +511,8 @@ class ResolutionStrategyJudge {
     fun judge(cb: ConflictBlock): ResolutionStrategy {
         if (isUnresolved(cb.merged)) return ResolutionStrategy.UNRESOLVED
         if (acceptOurs(cb)) return ResolutionStrategy.OUR
-        if (acceptBases(cb)) return ResolutionStrategy.BASE
         if (acceptTheirs(cb)) return ResolutionStrategy.THEIR
+        if (acceptBases(cb)) return ResolutionStrategy.BASE
         if (deleteAllRevisions(cb)) return ResolutionStrategy.DELETION
 
         val deflatedOurs = deflatedLines(cb.ours)
