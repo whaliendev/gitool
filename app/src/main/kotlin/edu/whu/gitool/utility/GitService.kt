@@ -2,12 +2,10 @@ package edu.whu.gitool.utility
 
 import edu.whu.gitool.model.Project
 import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.diff.Sequence
 import org.eclipse.jgit.internal.storage.file.FileRepository
 import org.eclipse.jgit.lib.AbbreviatedObjectId
 import org.eclipse.jgit.lib.ObjectId
 import org.eclipse.jgit.lib.Repository
-import org.eclipse.jgit.merge.MergeResult
 import org.eclipse.jgit.merge.MergeStrategy
 import org.eclipse.jgit.merge.RecursiveMerger
 import org.eclipse.jgit.revwalk.RevCommit
@@ -230,7 +228,7 @@ class GitService {
                 if (!merger.merge(p1, p2)) {
                     if (fileExts.isEmpty()) return true
                     val rMerger = merger as RecursiveMerger
-                    rMerger.mergeResults.forEach { (file: String, result: MergeResult<out Sequence?>) ->
+                    rMerger.mergeResults.forEach { (file: String, _) ->
                         if (file.substringAfterLast(".") in fileExts) {
                             return true
                         }
