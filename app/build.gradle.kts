@@ -57,14 +57,42 @@ application {
     mainClass.set("edu.whu.gitool.AppKt")
 }
 
+// for plugin use, let plugin `application` know how to start it
 tasks.jar {
     manifest {
         attributes["Main-Class"] = "edu.whu.gitool.AppKt"
     }
+}
+
+// every jar add manifest attribute main class
+tasks.withType<Jar> {
+    manifest {
+        attributes["Main-Class"] = "edu.whu.gitool.AppKt"
+    }
+}
+
+
+tasks.named("build") {
+    dependsOn(tasks.named("uberJar"))
+}
+
+// fat jar
+tasks.register<Jar>("uberJar") {
+    archiveClassifier.set("uber")
+    description = "build a fat jar"
+    group = "build"
 
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
-    from(configurations.runtimeClasspath.get().map { zipTree(it) }.also { from(it) })
+    exclude("META-INF/*.RSA", "META-INF/*.SF", "META-INF/*.DSA")
+    from(sourceSets.main.get().output)
+    dependsOn(configurations.runtimeClasspath)
+    from({
+        configurations.runtimeClasspath.get().filter { it.name.endsWith(".jar") }
+            .map { jar ->
+                zipTree(jar)
+            }
+    })
 }
 
 tasks.named<Test>("test") {
