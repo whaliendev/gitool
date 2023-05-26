@@ -11,7 +11,8 @@ import java.io.File
 class CommandFind {
     @Parameter(
         names = ["--only-conflicts"],
-        description = "only find merge scenario with conflicts"
+        description = "only find merge scenarios with conflicts",
+        arity = 1
     )
     // indicate gitool find to only record conflicts merge scenario
     var onlyConflicts: Boolean = true
@@ -19,7 +20,7 @@ class CommandFind {
     @Parameter(
         names = ["--only-merged"],
         description = "return merge scenario with only merged commit node set, output will store " +
-            "merged commit node id if set to true; otherwise, output will be set to " +
+            "merged commit id if set to true; otherwise, output will be set to " +
             "our, their, merged commit nodes with [queryBase] set to false; If " +
             "[queryBase] is true and [onlyMerged] is false, output will store " +
             "our, their, base, merged"
@@ -47,7 +48,7 @@ class CommandFind {
 
     @Parameter(
         names = ["--count", "-c"],
-        description = "count of merge scenario to look up, default is $LOOKUP_THRESHOLD",
+        description = "count of merge scenarios to look up, default is $LOOKUP_THRESHOLD",
     )
     var count: Int = LOOKUP_THRESHOLD
 
@@ -59,7 +60,7 @@ class CommandFind {
 
     @Parameter(
         names = ["-d", "--output-file"],
-        description = "output merge scenario found to destination file, with the following sequence: our, their, base, merged",
+        description = "output merge scenarios found to destination file, with the following sequence: our, their, base, merged",
         converter = FileConverter::class
     )
     var outputFile: File? = null
@@ -71,10 +72,13 @@ class CommandFind {
     var writeHeader = false
 
     @Parameter(
-        description = "project path of a git repo to lookup merge scenario",
+        description = "<project path>",
         required = true
     )
-    lateinit var projectPath: String
+    var projectPath: String = ""
+
+    @Parameter(names = ["--help"], help = true, description = "display help message")
+    var help: Boolean = false
 
     internal companion object {
         const val MERGE_SCENARIO_DEST = "merge-scenarios.csv"

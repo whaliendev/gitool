@@ -10,11 +10,11 @@ import java.io.File
 )
 class CommandExtract {
     @Parameter(
-        description = "project path to extract merge scenario resolutions",
+        description = "<project path>",
         converter = FileConverter::class,
         required = true
     )
-    lateinit var projectPath: File
+    var projectPath: File = File("")
 
     @Parameter(
         names = ["--dump-stat"],
@@ -27,7 +27,7 @@ class CommandExtract {
         required = true,
         description = "directory to dump resolution results"
     )
-    lateinit var dumpPath: File
+    var dumpPath: File = File("")
 
     @Parameter(
         names = ["--mss"],
@@ -37,11 +37,11 @@ class CommandExtract {
 
     @Parameter(
         names = ["--mss-file"],
-        description = "merge scenarios to extract resolutions, should be file path of " +
+        description = "merge scenarios to extract resolutions, should be file path containing " +
             "merge scenarios, one per line"
     )
     var mssFile: File? = null
 
-    @Parameter(names = ["--help"], help = true)
+    @Parameter(names = ["--help", "-h"], help = true, description = "display help message")
     var help: Boolean = false
 }
