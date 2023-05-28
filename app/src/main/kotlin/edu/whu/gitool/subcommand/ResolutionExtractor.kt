@@ -254,8 +254,8 @@ class ResolutionExtractor(
                         )
                         merge(file, fileDir)
                     }
-                    extractAndJudge(msDumpPath, projectPathStr)
                 }
+                extractAndJudge(msDumpPath, projectPathStr)
             } else {
                 logger.error("merge of parent commit nodes of $mergedHash succeeded, which is weird, we'll skip this one")
                 return
@@ -400,9 +400,10 @@ class ResolutionExtractor(
             conflictBlocks.forEach { cb ->
                 val prefix = getCodeSnippets(confLines, -1, cb.startLine)
                 val suffix = getCodeSnippets(confLines, cb.endLine, confLines.size)
-                val startLine = alignLine(prefix, mergedLines, true)    // can still be wrong
+                val startLine =
+                    alignLineScan(prefix, mergedLines, false, startIndex)    // can still be wrong
                 startIndex = startLine
-                val endLine = alignLine(suffix, mergedLines, false, startIndex + 1)
+                val endLine = alignLineScan(suffix, mergedLines, true, startIndex)
                 startIndex = endLine
                 cb.merged = getCodeSnippets(mergedLines, startLine, endLine)
 
@@ -420,6 +421,47 @@ class ResolutionExtractor(
                 conflictBlocks
             )
         }
+    }
+
+    private fun alignLineScan(
+        anchor: List<String>,
+        merged: List<String>,
+        isSuffix: Boolean,
+        startIndex: Int,
+    ): Int {
+        val pivot = mutableListOf<String>()
+        val source = mutableListOf<String>()
+        if (!isSuffix) {
+            pivot.addAll(anchor.reversed())
+            source.addAll(merged.subList(startIndex, merged.size).reversed())
+        } else {
+            pivot.addAll(anchor)
+            source.addAll(merged.subList(startIndex + 1, merged.size))
+        }
+
+        if (pivot.size == 0 && isSuffix) return merged.size
+        else if (pivot.size == 0) return -1
+
+        var maxAlign = -1
+        var loc = 0
+        for (i in source.indices) {
+            if (maxAlign > 5) break
+            if (pivot[0] == source[i]) {
+                var j = i
+                var k = 0
+                while (++k < pivot.size && ++j < source.size && source[j] == pivot[k]);
+                // the closer, the better
+                if (k >= maxAlign && !isSuffix) {
+                    maxAlign = k
+                    loc = i
+                } else if (k > maxAlign && isSuffix) {
+                    maxAlign = k
+                    loc = i
+                }
+            }
+        }
+
+        return if (!isSuffix) merged.size - loc - 1 else startIndex + loc + 1
     }
 
     private fun dumpResolutionStrategy(
