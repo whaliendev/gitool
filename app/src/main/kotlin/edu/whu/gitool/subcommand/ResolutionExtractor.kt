@@ -37,8 +37,6 @@ class ResolutionExtractor(
     private var needDumpStat: Boolean = false
     private val mss: MutableList<String> = mutableListOf()
 
-    override var result: Optional<List<String>> = Optional.empty()
-
     private var repo: Repository
 
     init {
@@ -105,11 +103,11 @@ class ResolutionExtractor(
         }
     }
 
-    override fun run(): Result<Boolean> {
+    override fun execute(): Optional<List<String>> {
         mss.forEach { handleMergeScenario(it) }
-        dumpResolutionStats()
+        val data = dumpResolutionStats()
         printResolutionStats()
-        return Result.success(true)
+        return Optional.of(data)
     }
 
     private fun printResolutionStats() {
@@ -153,8 +151,8 @@ class ResolutionExtractor(
         }
     }
 
-    private fun dumpResolutionStats() {
-        if (statFile == null) return
+    private fun dumpResolutionStats(): List<String> {
+        if (statFile == null) return emptyList()
         val ourCnt = statMap[ResolutionStrategy.OUR.literal]!!
         val theirCnt = statMap[ResolutionStrategy.THEIR.literal]!!
         val baseCnt = statMap[ResolutionStrategy.BASE.literal]!!
@@ -179,8 +177,6 @@ class ResolutionExtractor(
             conflictBlockCnt.toString()
         )
 
-        result = Optional.of(data)
-
         if (statFile.exists()) { // append data
             BufferedWriter(FileWriter(statFile.absolutePath, true)).use { bw ->
                 writeProjStat(bw, listOf(data))
@@ -192,6 +188,8 @@ class ResolutionExtractor(
                 writeProjStat(bw, listOf(data))
             }
         }
+
+        return data
     }
 
     private fun writeProjStat(
@@ -325,7 +323,7 @@ class ResolutionExtractor(
 
         val command =
             "git merge-file -p --diff3 ${ourFile.absolutePath} ${baseFile.absolutePath} ${theirFile.absolutePath}"
-        var process: Process?
+        val process: Process
         try {
             process = processBuilder.start()
         } catch (ex: IOException) {
@@ -334,7 +332,7 @@ class ResolutionExtractor(
         }
 
         logger.info("${ourFile.absolutePath} and ${theirFile.absolutePath} merged, output is ${conflictFile.absolutePath}")
-        BufferedReader(InputStreamReader(process!!.inputStream)).use { br ->
+        BufferedReader(InputStreamReader(process.inputStream)).use { br ->
             BufferedWriter(FileWriter(conflictFile)).use { writer ->
                 br.forEachLine { line ->
                     writer.write(line)
@@ -378,6 +376,7 @@ class ResolutionExtractor(
                 .filter { it.value.startsWith(ConflictMark.OURS.mark) }
                 .forEach { indexedValue ->
                     val index = indexedValue.index
+                    val lineno = index + 1
                     val cb = ConflictBlock(++indexOfFile)
                     conflictBlockCnt++
                     var j = index
@@ -397,11 +396,14 @@ class ResolutionExtractor(
 
             logger.info("judging resolution strategy of conflict blocks in file $craftedFile")
             val judge = ResolutionStrategyJudge()
+            var startIndex = 0
             conflictBlocks.forEach { cb ->
                 val prefix = getCodeSnippets(confLines, -1, cb.startLine)
                 val suffix = getCodeSnippets(confLines, cb.endLine, confLines.size)
                 val startLine = alignLine(prefix, mergedLines, true)    // can still be wrong
-                val endLine = alignLine(suffix, mergedLines, false)
+                startIndex = startLine
+                val endLine = alignLine(suffix, mergedLines, false, startIndex + 1)
+                startIndex = endLine
                 cb.merged = getCodeSnippets(mergedLines, startLine, endLine)
 
                 cb.strategy = judge.judge(cb)
@@ -440,7 +442,12 @@ class ResolutionExtractor(
         }
     }
 
-    private fun alignLine(prefix: List<String>, merged: List<String>, reverse: Boolean): Int {
+    private fun alignLine(
+        prefix: List<String>,
+        merged: List<String>,
+        reverse: Boolean,
+        startLine: Int = 0
+    ): Int {
         if (prefix.isEmpty()) {
             return if (reverse) {
                 -1
@@ -459,8 +466,13 @@ class ResolutionExtractor(
         }
         var ret = 0
         var maxAlign = -1
-        for (i in source.indices) {
-            if (maxAlign >= 5) break
+        val indices = if (reverse) {
+            source.indices
+        } else {  // align suffix, start from prefix line
+            startLine until source.size
+        }
+        for (i in indices) {
+            if (maxAlign > 5) break
             if (source[i] == snippet[0]) {
                 var j = i
                 var k = 0
@@ -525,7 +537,7 @@ class ResolutionStrategyJudge {
         if (interleaveOfRevisions(deflatedOurs, deflatedTheirs, deflatedBases, deflatedMerged)) {
             return ResolutionStrategy.INTERLEAVE
         }
-        if (newcodeOfIntroduced(deflatedOurs, deflatedTheirs, deflatedBases, deflatedMerged)) {
+        if (newcodeIntroduced(deflatedOurs, deflatedTheirs, deflatedBases, deflatedMerged)) {
             return ResolutionStrategy.NEWCODE
         }
         return ResolutionStrategy.UNKNOWN
@@ -533,7 +545,7 @@ class ResolutionStrategyJudge {
 
 
     companion object {
-        private fun newcodeOfIntroduced(
+        private fun newcodeIntroduced(
             deflatedOurs: List<String>,
             deflatedTheirs: List<String>,
             deflatedBases: List<String>,

@@ -20,12 +20,12 @@ import java.util.*
 
 class MergeScenarioFinder(
     private val onlyConflicts: Boolean, // only store merge scenario with merge conflicts
-    private val onlyMerged: Boolean,    // we only want merged commit ids
-    private val queryBase: Boolean,     // query base commit id
+    onlyMerged: Boolean,    // we only want merged commit ids
+    queryBase: Boolean,     // query base commit id
     private var sinceHash: String?,
     private var beforeHash: String?,
     private val threshold: Int,
-    private val outputToTmp: Boolean,
+    outputToTmp: Boolean,
     private var outputFile: File?,
     private val writeHeader: Boolean,
     private val projectPath: String
@@ -87,9 +87,7 @@ class MergeScenarioFinder(
         }
     }
 
-    override var result: Optional<List<List<String>>> = Optional.empty()
-
-    override fun run(): Result<Boolean> {
+    override fun execute(): Optional<List<List<String>>> {
         val mergeQuadruples = mutableListOf<MergeQuadruple>()
         if (!useThreshold) {
             logger.info("begin walking from $beforeHash to $sinceHash")
@@ -129,9 +127,7 @@ class MergeScenarioFinder(
             }
         }
 
-        result = Optional.of(data)
-
-        return Result.success(true)
+        return Optional.of(data)
     }
 
     private fun walkFromBeforeToSince(mergeQuadruples: MutableList<MergeQuadruple>) {

@@ -63,7 +63,7 @@ class CommandFind {
         description = "output merge scenarios found to destination file, with the following sequence: our, their, base, merged",
         converter = FileConverter::class
     )
-    var outputFile: File? = null
+    var outputFile: File = File(System.getProperty("java.io.tmpdir")).resolve(MERGE_SCENARIO_DEST)
 
     @Parameter(
         names = ["--write-header"],
@@ -77,7 +77,7 @@ class CommandFind {
     )
     var projectPath: String = ""
 
-    @Parameter(names = ["--help"], help = true, description = "display help message")
+    @Parameter(names = ["--help", "-h"], help = true, description = "display help message")
     var help: Boolean = false
 
     internal companion object {

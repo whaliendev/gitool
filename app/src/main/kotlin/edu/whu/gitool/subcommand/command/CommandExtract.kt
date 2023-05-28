@@ -18,7 +18,7 @@ class CommandExtract {
 
     @Parameter(
         names = ["--dump-stat"],
-        description = "dump statistic info to which file"
+        description = "dump statistic info to which file; if not specified, statistics will not be dumped"
     )
     var statFile: File? = null
 
@@ -27,7 +27,7 @@ class CommandExtract {
         required = true,
         description = "directory to dump resolution results"
     )
-    var dumpPath: File = File("")
+    var dumpPath: File = File(System.getProperty("java.io.tmpdir"))
 
     @Parameter(
         names = ["--mss"],
