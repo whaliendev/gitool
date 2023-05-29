@@ -357,6 +357,7 @@ class ResolutionExtractor(
 
     private fun extractAndJudge(msDumpPath: String, projectPath: String) {
         logger.info("extracting conflict blocks of $msDumpPath at $projectPath")
+        if (!File(msDumpPath).exists()) return
         Files.walk(Path(msDumpPath), 1).forEach { path ->
             val craftedFile = path.toFile().name  // [db-]db_impl.cc
             val filename = path.toFile().name.substringAfterLast("]")  // db_impl.cc
@@ -454,7 +455,7 @@ class ResolutionExtractor(
                 if (k >= maxAlign && !isSuffix) {
                     maxAlign = k
                     loc = i
-                } else if (k > maxAlign && isSuffix) {
+                } else if (k > maxAlign) {
                     maxAlign = k
                     loc = i
                 }
